@@ -28,7 +28,7 @@ docker compose up -d --build
 
 ---
 
-## 🧪 Quick Testing Guide (CURL)
+## 🧪 Manual Verification Guide (CURL)
 
 Follow these steps to verify the system end-to-end. Ensure the containers are running (`docker compose up`).
 

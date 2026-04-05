@@ -14,7 +14,7 @@ from app.core.exceptions.base import AppBaseException, app_exception_handler
 setup_logging()
 
 app = FastAPI(
-    title="18 LPA Finance Manager",
+    title="Zorvyn-Backend",
     description="Production-ready API with RBAC, Logging, and Rate Limiting",
     version="1.0.0"
 )

@@ -91,7 +91,7 @@ class FinanceService:
             target_entity="FinancialRecord",
             target_entity_id=db_record.id,
             executor_id=user_id,
-            payload=record_in.model_dump()
+            payload=record_in.model_dump(mode="json")
         )
         
         bg_tasks.add_task(self._create_audit_log, audit_data)
@@ -121,7 +121,7 @@ class FinanceService:
             target_entity="FinancialRecord",
             target_entity_id=record_id,
             executor_id=user_id,
-            payload=record_in.model_dump(exclude_unset=True)
+            payload=record_in.model_dump(exclude_unset=True, mode="json")
         )
         
         bg_tasks.add_task(self._create_audit_log, audit_data)

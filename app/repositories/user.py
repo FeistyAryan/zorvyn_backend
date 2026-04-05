@@ -36,3 +36,9 @@ class UserRepository(BaseRepository[User, UserCreate, UserUpdate]):
         if user:
             user.hashed_refresh_token = None
             self.db_session.add(user)
+
+    async def get_count(self) -> int:
+        from sqlalchemy import func
+        statement = select(func.count()).select_from(User)
+        result = await self.db_session.execute(statement)
+        return result.scalar() or 0

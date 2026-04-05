@@ -32,11 +32,12 @@ docker compose up -d --build
 
 Follow these steps to verify the system end-to-end. Ensure the containers are running (`docker compose up`).
 
-### **1. Register an Admin User**
+### **1. Bootstrap the System (Admin Registration)**
+The first user to register is automatically granted the **Admin** role.
 ```bash
 curl -X POST http://localhost:8000/api/v1/auth/register \
 -H "Content-Type: application/json" \
--d '{"email": "admin@zorvyn.com", "password": "AdminPassword123", "role": "admin"}'
+-d '{"email": "admin@zorvyn.com", "password": "AdminPassword123"}'
 ```
 
 ### **2. Login to receive Access Token**
@@ -66,6 +67,27 @@ curl -X GET http://localhost:8000/api/v1/finance/summary \
 curl -X GET "http://localhost:8000/api/v1/finance/all?category=salary" \
 -H "Authorization: Bearer <YOUR_TOKEN>"
 ```
+
+---
+
+## 🧪 Automated Testing Suite
+
+The system includes a comprehensive suite of automated tests to ensure business logic integrity and RBAC enforcement.
+
+### **Running the Tests**
+To execute the full test suite within the containerized environment:
+```bash
+docker compose exec -e TESTING=True -e PYTHONPATH=. app pytest -v
+```
+
+### **Testing Strategy**
+*   **Isolation:** Tests utilize an **In-Memory SQLite** database (configured in `tests/conftest.py`) to ensure each test runs in a clean, isolated environment without side-effects on the development database.
+*   **Performance:** By setting `TESTING=True`, the `SlowAPI` rate limiter is bypassed, allowing the suite to run at maximum speed.
+*   **Core Verifications:**
+    *   **Auth Flow:** End-to-end registration, login, and secure token rotation.
+    *   **RBAC Enforcement:** Validation of granular permissions for `Viewer`, `Analyst`, and `Admin` roles.
+    *   **Financial Integrity:** Accurate calculation of dashboard summaries and transactional state management.
+    *   **System Protection:** Hardcoded safeguards preventing the deactivation or downgrade of the primary System Administrator (ID 1).
 
 ---
 
@@ -146,6 +168,8 @@ In financial systems, **Traceability is non-negotiable**. Every mutation must be
 | User & Role Management | ❌ | ❌ | ✅ |
 
 ### **Business Logic & Assumptions**
+*   **First-User Bootstrap:** To facilitate initial setup, the very first user to register is automatically granted the **Admin** role. All subsequent registrations default to the **Viewer** role.
+*   **Admin Protection:** The primary system administrator (User ID 1) is protected via service-layer logic, preventing unauthorized role downgrades or account deactivation.
 *   **Viewer:** Stakeholders who monitor trends without data modification rights.
 *   **Analyst (The B2B Operator):** In professional dashboards, analysts manage client data entry and corrections, justifying their `Create` and `Update` permissions.
 *   **Admin:** Reserved for high-stakes operational control and administrative overrides.

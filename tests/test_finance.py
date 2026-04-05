@@ -1,54 +1,77 @@
 import pytest
 from httpx import AsyncClient
 
-async def get_token(client: AsyncClient, email: str, role: str):
-    # Helper to register and login a user
+@pytest.mark.asyncio
+async def test_rbac_and_finance_workflow(client: AsyncClient):
+    # 1. Register Admin (First User)
     await client.post("/api/v1/auth/register", json={
-        "email": email, "password": "Password123!", "role": role
+        "email": "admin@test.com", "password": "Password123!"
     })
-    response = await client.post("/api/v1/auth/login", json={
-        "email": email, "password": "Password123!"
+    
+    admin_login = await client.post("/api/v1/auth/login", json={
+        "email": "admin@test.com", "password": "Password123!"
     })
-    return response.json()["access_token"]
+    admin_token = admin_login.json()["access_token"]
 
-@pytest.mark.asyncio
-async def test_rbac_viewer_cannot_create(client: AsyncClient):
-    # 1. Get Viewer Token
-    viewer_token = await get_token(client, "viewer@example.com", "viewer")
+    # 2. Register Second User (Defaults to Viewer)
+    await client.post("/api/v1/auth/register", json={
+        "email": "staff@test.com", "password": "Password123!"
+    })
     
-    # 2. Try to create a record (Should fail)
-    record_data = {
-        "amount": 1000, "type": "income", "category": "salary", "description": "Stealing Access"
-    }
-    response = await client.post(
-        "/api/v1/finance/create", 
-        json=record_data,
-        headers={"Authorization": f"Bearer {viewer_token}"}
+    staff_login = await client.post("/api/v1/auth/login", json={
+        "email": "staff@test.com", "password": "Password123!"
+    })
+    staff_token = staff_login.json()["access_token"]
+
+    # 3. Viewer (Staff) should NOT be able to create records
+    fail_res = await client.post(
+        "/api/v1/finance/create",
+        json={"amount": 100, "type": "income", "category": "salary"},
+        headers={"Authorization": f"Bearer {staff_token}"}
     )
-    
-    # Expected: 403 Forbidden because Viewer can't create
-    assert response.status_code == 403
+    assert fail_res.status_code == 403
 
-@pytest.mark.asyncio
-async def test_analyst_can_create_and_view_summary(client: AsyncClient):
-    # 1. Get Analyst Token
-    analyst_token = await get_token(client, "analyst@example.com", "analyst")
-    
-    # 2. Create Record (Should pass)
-    record_data = {
-        "amount": 5000, "type": "income", "category": "salary", "description": "Legal Job"
-    }
-    create_res = await client.post(
-        "/api/v1/finance/create", 
-        json=record_data,
-        headers={"Authorization": f"Bearer {analyst_token}"}
+    # 4. Admin promotes Staff to Analyst
+    promote_res = await client.patch(
+        "/api/v1/users/2",
+        json={"role": "analyst"},
+        headers={"Authorization": f"Bearer {admin_token}"}
     )
-    assert create_res.status_code == 201
+    assert promote_res.status_code == 200
+    assert promote_res.json()["role"] == "analyst"
 
-    # 3. View Summary (Should work)
+    # 5. Analyst should now be able to create records
+    success_res = await client.post(
+        "/api/v1/finance/create",
+        json={"amount": 5000, "type": "income", "category": "salary"},
+        headers={"Authorization": f"Bearer {staff_token}"}
+    )
+    assert success_res.status_code == 201
+
+    # 6. Verify Summary updates
     summary_res = await client.get(
         "/api/v1/finance/summary",
-        headers={"Authorization": f"Bearer {analyst_token}"}
+        headers={"Authorization": f"Bearer {staff_token}"}
     )
     assert summary_res.status_code == 200
     assert summary_res.json()["total_income"] == "5000.00"
+
+@pytest.mark.asyncio
+async def test_user_1_protection(client: AsyncClient):
+    # 1. First user is Admin
+    await client.post("/api/v1/auth/register", json={
+        "email": "boss@test.com", "password": "Password123!"
+    })
+    login = await client.post("/api/v1/auth/login", json={
+        "email": "boss@test.com", "password": "Password123!"
+    })
+    token = login.json()["access_token"]
+
+    # 2. Try to downgrade self (User 1) - Should fail
+    res = await client.patch(
+        "/api/v1/users/1",
+        json={"role": "viewer"},
+        headers={"Authorization": f"Bearer {token}"}
+    )
+    assert res.status_code == 403
+    assert "restricted" in res.json()["detail"]

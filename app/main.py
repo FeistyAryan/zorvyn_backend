@@ -1,4 +1,5 @@
 import time
+import os
 from fastapi import FastAPI
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
@@ -19,8 +20,6 @@ app = FastAPI(
     version="1.0.0"
 )
 
-import os
-# Conditional Rate Limiting
 limiter.enabled = os.getenv("TESTING") != "True"
 
 app.state.limiter = limiter

@@ -27,7 +27,6 @@ class AuthService:
             logger.warning(f"Registration blocked: {user_in.email} already exists.")
             raise UserAlreadyExistsError()
 
-        # Decision: First user is Admin, everyone else is Viewer by default
         user_count = await self.user_repo.get_count()
         if user_count == 0:
             user_in.role = UserRole.ADMIN
@@ -55,7 +54,6 @@ class AuthService:
             logger.warning(f"Invalid login for {login_data.email}")
             raise AuthenticationError("Invalid email or password")
         
-        # Include 'role' in token claims for RBAC enforcement
         token_data = {"sub": str(user.id), "role": user.role}
         access_token = create_access_token(data=token_data)
         refresh_token = create_refresh_token(data=token_data)
@@ -87,7 +85,6 @@ class AuthService:
             logger.error(f"Potential Token Replay Attack! Revoking access for user_id: {user_id}")
             raise AuthenticationError("Token has been revoked or already used.")
 
-        # Re-include 'role' during rotation
         token_data = {"sub": str(user.id), "role": user.role}
         new_access = create_access_token(data=token_data)
         new_refresh = create_refresh_token(data=token_data)
@@ -98,7 +95,6 @@ class AuthService:
         logger.info(f"Successful token rotation for user_id: {user_id}")
         return Token(access_token=new_access, refresh_token=new_refresh, token_type="bearer")
 
-    # User Management for Admins
     async def get_users(self, skip: int = 0, limit: int = 100) -> Sequence[User]:
         return await self.user_repo.get_multi(skip=skip, limit=limit)
 

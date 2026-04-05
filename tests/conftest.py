@@ -17,7 +17,6 @@ def event_loop():
 
 @pytest_asyncio.fixture
 async def client() -> AsyncGenerator[AsyncClient, None]:
-    # Use a FRESH in-memory database for EVERY test function
     test_db_url = f"sqlite+aiosqlite:///:memory:"
     engine_test = create_async_engine(test_db_url)
     
@@ -39,6 +38,5 @@ async def client() -> AsyncGenerator[AsyncClient, None]:
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
         yield ac
     
-    # Cleanup
     app.dependency_overrides.clear()
     await engine_test.dispose()

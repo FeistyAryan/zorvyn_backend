@@ -24,7 +24,7 @@ docker compose up -d --build
 ### **3. Automatic Initialization**
 *   **Alembic Migrations:** Automatically execute to synchronize the PostgreSQL schema on startup.
 *   **Service Readiness:** The application utilizes Docker healthchecks to ensure the Database is fully initialized before the web server begins accepting traffic.
-*   **Interactive Documentation:** Explore endpoints via [Swagger UI](http://localhost:8000/docs)
+*   **Interactive Documentation:** Explore endpoints via Swagger UI: http://localhost:8000/docs
 
 ---
 
